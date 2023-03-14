@@ -1,0 +1,25 @@
+name: Merge branches in sequence
+on:
+  push:
+    branches:
+      - 'release/*'
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key C99B11DEB97541F0
+          sudo apt-add-repository https://cli.github.com/packages
+          sudo apt update
+          sudo apt install gh
+      - name: Merge branches
+        run: |
+          current_branch=$(echo ${GITHUB_REF#refs/heads/})
+          current_version=$(echo ${current_branch#release/})
+          next_version=$(echo ${current_version%.*}.$((${current_version##*.}+1)))
+          next_branch=release/$next_version-text
+          gh pr create --title "Merge $current_branch into $next_branch" --base $next_branch --head $current_branch --draft
+          gh pr merge --auto --merge-method squash --delete-branch $current_branch
