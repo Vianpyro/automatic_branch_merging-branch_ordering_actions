@@ -1,25 +1,46 @@
 name: Merge branches in sequence
+
+# Trigger the workflow on push events to branches that start with 'release/'
 on:
   push:
     branches:
       - 'release/*'
+
 jobs:
   merge:
+    # Use the latest version of the Ubuntu operating system as the runner for this job
     runs-on: ubuntu-latest
+
     steps:
+      # Check out the repository code
       - name: Checkout code
         uses: actions/checkout@v2
+
+      # Install the GitHub CLI to use later in the workflow
       - name: Install GitHub CLI
         run: |
           sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key C99B11DEB97541F0
           sudo apt-add-repository https://cli.github.com/packages
           sudo apt update
           sudo apt install gh
+
+      # Merge the branches in sequence
       - name: Merge branches
         run: |
+          # Extract the current branch name from the GITHUB_REF environment variable
           current_branch=$(echo ${GITHUB_REF#refs/heads/})
+
+          # Extract the current version number from the current branch name
           current_version=$(echo ${current_branch#release/})
+
+          # Calculate the next version number by incrementing the last number in the current version number
           next_version=$(echo ${current_version%.*}.$((${current_version##*.}+1)))
+
+          # Create a new branch name for the next version number
           next_branch=release/$next_version-text
+
+          # Create a pull request that merges the current branch into the next branch
           gh pr create --title "Merge $current_branch into $next_branch" --base $next_branch --head $current_branch --draft
+
+          # Automatically merge the current branch into the next branch using the GitHub CLI
           gh pr merge --auto --merge-method squash --delete-branch $current_branch
